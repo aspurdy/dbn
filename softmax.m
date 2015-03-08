@@ -1,4 +1,4 @@
-function mu = softm( eta )
+function mu = softmax( eta )
 % Softmax function
 % mu(i,c) = exp(eta(i,c))/sum_c' exp(eta(i,c'))
 
