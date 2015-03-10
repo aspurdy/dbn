@@ -31,6 +31,7 @@ classdef SoftmaxRBM < BernoulliRBM & handle
             numepochs = rbm.opts.numepochs;
             alpha = rbm.opts.alpha;
             momentum = rbm.opts.momentum;
+            decay = rbm.opts.decay;
           
             numbatches = m / batchsize;
             assert(rem(numbatches, 1) == 0, 'numbatches not integer');
@@ -61,8 +62,8 @@ classdef SoftmaxRBM < BernoulliRBM & handle
                     d2 = h1_hat' * y1;
 
                     % compute weight updates
-                    rbm.vW = momentum * rbm.vW + alpha * (c1 - c2) / batchsize;
-                    rbm.vU = momentum * rbm.vU + alpha * (d1 - d2) / batchsize;
+                    rbm.vW = momentum * rbm.vW + alpha * (c1 - c2 - decay * sum(sum(rbm.W))) / batchsize;
+                    rbm.vU = momentum * rbm.vU + alpha * (d1 - d2 - decay * sum(sum(rbm.U))) / batchsize;
                     rbm.vb = momentum * rbm.vb + alpha * sum(x0 - x1)' / batchsize;
                     rbm.vc = momentum * rbm.vc + alpha * sum(h0 - h1_hat)' / batchsize;
                     rbm.vd = momentum * rbm.vd + alpha * sum(y0 - y1)' / batchsize;

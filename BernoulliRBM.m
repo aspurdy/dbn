@@ -49,6 +49,7 @@ classdef BernoulliRBM < RBM & handle
             numepochs = rbm.opts.numepochs;
             alpha = rbm.opts.alpha;
             momentum = rbm.opts.momentum;
+            decay = rbm.opts.decay;
 
             numbatches = m / batchsize;
             assert(rem(numbatches, 1) == 0, 'numbatches not integer');
@@ -65,7 +66,7 @@ classdef BernoulliRBM < RBM & handle
                     c1 = h1' * v1;
                     c2 = h2' * v2;
 
-                    rbm.vW = momentum * rbm.vW + alpha * (c1 - c2)     / batchsize;
+                    rbm.vW = momentum * rbm.vW + alpha * (c1 - c2 - decay * sum(sum(rbm.W))) / batchsize;
                     rbm.vb = momentum * rbm.vb + alpha * sum(v1 - v2)' / batchsize;
                     rbm.vc = momentum * rbm.vc + alpha * sum(h1 - h2)' / batchsize;
 

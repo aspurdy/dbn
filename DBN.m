@@ -71,12 +71,12 @@ classdef DBN < handle
             end
 
             % do nGibbSteps iterations of gibbs sampling at the top layer
-            for i = 1:nGibbSteps
-                h = logistic(dbn.rbm(n).c' + x * dbn.rbm(n).W' + y * dbn.rbm(n).U');
-                x = logistic(dbn.rbm(n).b' + h * dbn.rbm(n).W);
+            for i = 1:nGibbSteps - 1
+                h = RBM.sample(dbn.rbm(n).c' + x * dbn.rbm(n).W' + y * dbn.rbm(n).U');
+                x = RBM.sample(dbn.rbm(n).b' + h * dbn.rbm(n).W);
             end
             h = RBM.sample(dbn.rbm(n).c' + x * dbn.rbm(n).W' + y * dbn.rbm(n).U');
-            x = RBM.sample(dbn.rbm(n).b' + h * dbn.rbm(n).W);
+            x = logistic(dbn.rbm(n).b' + h * dbn.rbm(n).W);
 
             % do a downward pass to generate sample
             for i = n-1:-1:1
