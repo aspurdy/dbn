@@ -13,7 +13,7 @@ classdef RBM < matlab.mixin.Heterogeneous & handle
     
     methods(Static)
         function x = sample(P)
-            x = double(logistic(P) > rand(size(P)));
+            x = double(logsig(P) > rand(size(P)));
         end
     end
 

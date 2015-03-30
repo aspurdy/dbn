@@ -7,20 +7,21 @@ classdef SoftmaxRBM < BernoulliRBM & handle
         vU
         
         d
-        vd        
+        vd
     end
     
     methods
         function rbm = SoftmaxRBM(nVis, nHidden, opts, nClasses)
             rbm@BernoulliRBM(nVis, nHidden, opts);
 
-            % bias for visible units representing class labels
+            % bias for softmax units
             rbm.d = zeros(nClasses, 1, 'gpuArray');
             rbm.vd = zeros(nClasses, 1, 'gpuArray');
-            % weights between target labels and hidden units
+            % weights for softmax-to-hidden connections
             rbm.U = zeros(nHidden, nClasses, 'gpuArray');
-            rbm.vU = zeros(nHidden, nClasses, 'gpuArray');
+            rbm.vU = zeros(nHidden, nClasses);
         end
+       
         
         function rbm = train(rbm, x, y)
             assert(isfloat(x), 'x must be a float');
@@ -32,10 +33,11 @@ classdef SoftmaxRBM < BernoulliRBM & handle
             alpha = rbm.opts.alpha;
             momentum = rbm.opts.momentum;
             decay = rbm.opts.decay;
+            k = rbm.opts.k;
           
             numbatches = m / batchsize;
             assert(rem(numbatches, 1) == 0, 'numbatches not integer');
-            err = zeros(numepochs, 1, 'gpuArray');
+            x = gpuArray(x);
             for i = 1 : numepochs
                 kk = randperm(m);
                 for l = 1 : numbatches
@@ -43,30 +45,34 @@ classdef SoftmaxRBM < BernoulliRBM & handle
                     labels = y(kk((l - 1) * batchsize + 1 : l * batchsize), :);
 
                     % positive phase
-                    x0 = batch;
-                    y0 = labels;
+                    v1 = gpuArray(batch);
+                    y1 = gpuArray(labels);
 
-                    h0_hat = logistic(repmat(rbm.c', batchsize, 1) + x0 * rbm.W' + y0 * rbm.U');
+                    h1 = RBM.sample(repmat(rbm.c', batchsize, 1) + v1 * rbm.W' + y1 * rbm.U');
 
+                    if i == 1 && l == 1
+                        h2 = h1;
+                    end
+                    
                     % negative phase
-                    h0 = RBM.sample(repmat(rbm.c', batchsize, 1) + x0 * rbm.W' + y0 * rbm.U');
-                    y1 = softmax(repmat(rbm.d', batchsize, 1) + h0 * rbm.U);
+                    for j = 1:k
+                        y2 = softmax(repmat(rbm.d', batchsize, 1) + h2 * rbm.U);
+                        v2 = RBM.sample(repmat(rbm.b', batchsize, 1) + h2 * rbm.W);
+                        h2 = RBM.sample(repmat(rbm.c', batchsize, 1) + v2 * rbm.W' + y2 * rbm.U');
+                    end
+                    
+                    c1 = h1' * v1;
+                    c2 = h2' * v2;
 
-                    x1 = RBM.sample(repmat(rbm.b', batchsize, 1) + h0 * rbm.W);
-                    h1_hat = logistic(repmat(rbm.c', batchsize, 1) + x1 * rbm.W' + y1 * rbm.U');
-
-                    c1 = h0_hat' * x0;
-                    c2 = h1_hat' * x1;
-
-                    d1 = h0_hat' * y0;
-                    d2 = h1_hat' * y1;
+                    d1 = h1' * y1;
+                    d2 = h2' * y2;
 
                     % compute weight updates
-                    rbm.vW = momentum * rbm.vW + alpha * (c1 - c2 - decay * sum(sum(rbm.W))) / batchsize;
-                    rbm.vU = momentum * rbm.vU + alpha * (d1 - d2 - decay * sum(sum(rbm.U))) / batchsize;
-                    rbm.vb = momentum * rbm.vb + alpha * sum(x0 - x1)' / batchsize;
-                    rbm.vc = momentum * rbm.vc + alpha * sum(h0 - h1_hat)' / batchsize;
-                    rbm.vd = momentum * rbm.vd + alpha * sum(y0 - y1)' / batchsize;
+                    rbm.vW = momentum * rbm.vW + alpha * (c1 - c2 - decay * rbm.W) / batchsize;
+                    rbm.vU = momentum * rbm.vU + alpha * (d1 - d2 - decay * rbm.U) / batchsize;
+                    rbm.vb = momentum * rbm.vb + alpha * (sum(v1 - v2)' - decay * rbm.b)     / batchsize;
+                    rbm.vc = momentum * rbm.vc + alpha * (sum(h1 - h2)' - decay * rbm.c) / batchsize;
+                    rbm.vd = momentum * rbm.vd + alpha * (sum(y1 - y2)' - decay * rbm.d)     / batchsize;
 
                     % update weights
                     rbm.W = rbm.W + rbm.vW;
@@ -75,18 +81,10 @@ classdef SoftmaxRBM < BernoulliRBM & handle
                     rbm.c = rbm.c + rbm.vc;
                     rbm.d = rbm.d + rbm.vd;
 
-                    % reconstruction error
-                    err(i) = err(i) + sum(sum((x0 - x1) .^ 2)) / batchsize;
                 end
-
-                disp(['epoch ' num2str(i) '/' num2str(numepochs)  '. Average reconstruction error is: ' num2str(err(i) / numbatches)]);
-
+                fprintf('epoch %d / %d\n', i, numepochs);
             end
-%             plot(err)
         end
-
-
     end
-    
 end
 

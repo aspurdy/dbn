@@ -1,13 +1,9 @@
-function mu = softmax( eta )
-% Softmax function
-% mu(i,c) = exp(eta(i,c))/sum_c' exp(eta(i,c'))
+function a = softmax(n)
 
-% This file is from pmtk3.googlecode.com
+nmax = max(n,[],2);
+n = bsxfun(@minus,n,nmax);
 
-tmp = exp(eta);
-denom = sum(tmp, 2);
-[D, C] = size(eta); %#ok
-%mu = tmp ./ repmat(denom, 1, C);
-mu = bsxfun(@rdivide, tmp, denom);
-
-end
+numer = exp(n);
+denom = sum(numer,2); 
+denom(denom == 0) = 1;
+a = bsxfun(@rdivide,numer,denom);
