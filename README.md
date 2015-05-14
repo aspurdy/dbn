@@ -1,4 +1,4 @@
-MATLAB code for training deep belief networks to model the joint distribution of the inputs and target classes.
+MATLAB code for training deep belief networks. 
 
 Implementation is based on the following references: 
 
